@@ -1,0 +1,27 @@
+phygeo tree add -f dated_Osmundaceae.phy --newick Osmundaceae Proyecto.tab exportado.nex
+phygeo tree draw --step 20 --time 1 -o Arbol Proyecto.tab
+phygeo geo add --type geomotion Proyecto.tab Modelo_tectonico.tab
+phygeo geo add --type landscape Proyecto.tab Modelo_paisaje.tab
+phygeo geo weights --add prior.tab Proyecto.tab 								
+# cambiar el nombre de la columna prior a weight
+phygeo range add -f data-points.tab --format csv Proyecto.tab Localidades_extant.csv Fos_locations.csv #Adicionar localidades
+phygeo range rotate Proyecto.tab 												
+#Rota las coordenadas de los fósiles 
+phygeo range taxa --val Proyecto.tab											
+# chequea si hay taxones sin datos de distribución
+./phygeo range kde --lambda 1000 -f KDE.tab Proyecto.tab							
+# Convierte nuestros punto a mapas de rango continuo.
+
+#Analisis
+./phygeo diff ml Proyecto.tab 													
+# estima el lambda
+	# osmundaceae	44.531250	-247.962987	<--- best value
+
+./phygeo diff like --lambda 44.531250 -o LIKE Proyecto.tab						
+# estima probabilidades de pixeles: genera un archivo con prefijo LIKE que contiene las probabilidades condicionales para cada pıxel en cada nodo
+	# osmundaceae	-274.434927
+./phygeo diff particles -p 1000 -i LIKE-Proyecto.tab-osmundaceae-44.531250-down.tab -o PART Proyecto.tab #mapeo estocástico
+./phygeo diff freq --kde 1000 -i PART-osmundaceae-44.531250x1000.tab -o FREQ Proyecto.tab # Transforma los mapas estocasticos en frecuencias de pixeles (archivo con prefijo FREQ).
+./phygeo diff map -c 1440 --key Claves_color.tab --gray -i FREQ-Proyecto.tab-PART-osmundaceae-44.531250x1000.tab.tab -o MAP Proyecto.tab #Mapas
+./phygeo diff map -c 1440 --key Claves_color.tab --gray --richness -i FREQ-Proyecto.tab-PART-osmundaceae-44.531250x1000.tab.tab -o RICHNESS Proyecto.tab #Riqueza relativa: permite observar patrones globales de movimiento
+./phygeo diff speed --tree speed --step 5 --box 5 -i PART-osmundaceae-44.531250x1000.tab Proyecto.tab > speed.txt #Distancias
